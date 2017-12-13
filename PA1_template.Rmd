@@ -1,25 +1,118 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+# Reproducible Research Project 1
+
+This document explains the data analysis process of an individual's steps data recorded every 5 minutes for two months during October and November 2012.
+
+### Loading and preprocessing the data
+
+The csv file is loaded and the date variable which is not a "date" variable initially, is transformed with as.Date function.
+
+```{r}
+data <- read.csv("C:/work/Coursera/DSSpec/Reproducible research/activity.csv")
+data$date <- as.Date(data$date, "%Y-%m-%d")
+```
+
+### What is the mean total number of steps taken per day?
+
+We first ignored the missing values in the data. Calculated the total number of steps taken per day. As can be seen in the following code chunk, we used dplyr library for this.
+
+```{r}
+library(dplyr)
+data.clean <- data[complete.cases(data[]),]
+data.clean.gr <- group_by(data.clean, date)
+data.sum <- summarise(data.clean.gr, sum=sum(steps))
+```
+
+Following is the code and the plot for the histogram for the total daily steps:
+
+``` {r}
+library(ggplot2)
+ggplot(data.sum, aes(sum))+geom_histogram(bins = 10, color="white", fill="darkblue")+
+    ggtitle("Histogram of Total Steps per Day")+
+    theme(plot.title = element_text(hjust = 0.5))
+```
+
+The mean and median of the total number of daily steps is calculated and printed as below:
+
+``` {r}
+print(mean.steps <- mean(data.sum$sum))
+print(median.steps <- median(data.sum$sum))
+```
+
+### What is the average daily activity pattern?
+
+We produced a time series plot - via ggplot2 package - of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis).
+
+``` {r}
+gr.interval <- group_by(data.clean, interval)
+data.int <- summarise(gr.interval, average=mean(steps))
+ggplot(data.int, aes(interval, average))+geom_line(color="darkblue",size=1)+
+    ggtitle("Average Number of Steps per Interval")+
+    theme(plot.title = element_text(hjust = .5))
+```
+
+The 5-minutes interval which contains the max number of steps is calculated and reported:
+
+``` {r}
+max.int <- max(data.int$average)
+print(filter(data.int, data.int$average==max.int))
+```
+
+### Imputing missing values
+
+The number of rows that has missing values are calculated and reported.
+
+``` {r}
+missing.rows <- filter(data, is.na(steps))
+nrow(missing.rows)
+```
+
+The missing values are filled with the mean of that specific interval in the overall dataset. Then we created a dataset with the missing values filled.
+
+``` {r}
+for (i in 1:nrow(data)){
+    if(is.na(data$steps[i])){
+      data$steps[i] = filter(data.int, interval==data[i,3])[1,2]
+    }
+}
+data.imputed <- data
+data.imputed[,1] <- as.numeric(data.imputed[,1])
+```
+
+The previous calculations for number of steps per day and the regarding histogram is made again.
+
+``` {r}
+data.imputed.gr <- group_by(data.imputed, date)
+data.imp <- summarise(data.imputed.gr, sum=sum(steps))
+ggplot(data.imp, aes(sum))+geom_histogram(bins = 10, color="white", fill="darkblue")+
+  ggtitle("Histogram of Total Steps per Day")+
+  theme(plot.title = element_text(hjust = 0.5))
+print(mean.steps.2 <- mean(data.imp$sum))
+print(median.steps.2 <- median(data.imp$sum))
+```
+
+As the results show there is no significant effect of imputing procedure.
+
+### Are there differences in activity patterns between weekdays and weekends?
+
+Activity patterns for the weekdays and weekends were examined as well. The regarding code chunk and the graphical representation is as follows:
+
+``` {r}
+daytype <- vector("character", nrow(data.imputed))
+for(i in 1:length(daytype)){
+    if (weekdays(data.imputed$date[i]) %in% c("Cumartesi","Pazar")){
+        daytype[i] <- "weekend"
+    }
+    else 
+        daytype[i] <- "weekday"
+    
+} 
+datanew <- cbind(data.imputed, daytype)
+data.int2 <- aggregate(steps~interval+daytype, datanew, mean)
+ggplot(data.int2, aes(interval, steps, color=daytype))+geom_line(size=1)+
+    facet_grid(daytype~.)+
+    ggtitle("Average Number of Steps per Interval")+
+    theme(plot.title = element_text(hjust = .5))
+```
 
 
-## Loading and preprocessing the data
 
-
-
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
